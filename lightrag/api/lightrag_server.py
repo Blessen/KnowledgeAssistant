@@ -1,6 +1,8 @@
 """
 LightRAG FastAPI Server
 """
+import os
+os.environ["TESSDATA_PREFIX"] = "/opt/homebrew/share/tessdata"
 
 from fastapi import FastAPI, Depends, HTTPException, status
 import asyncio

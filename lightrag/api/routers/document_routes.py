@@ -18,8 +18,15 @@ from pydantic import BaseModel, Field, field_validator
 from lightrag import LightRAG
 from lightrag.base import DocProcessingStatus, DocStatus
 from lightrag.api.utils_api import get_combined_auth_dependency
+
 from ..config import global_args
 
+import ssl
+import certifi
+
+ssl._create_default_https_context = ssl._create_unverified_context
+# OR (safer)
+ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=certifi.where())
 
 # Function to format datetime to ISO format string with timezone information
 def format_datetime(dt: Any) -> Optional[str]:
@@ -518,11 +525,42 @@ async def pipeline_enqueue_file(rag: LightRAG, file_path: Path) -> bool:
                 if global_args.document_loading_engine == "DOCLING":
                     if not pm.is_installed("docling"):  # type: ignore
                         pm.install("docling")
-                    from docling.document_converter import DocumentConverter  # type: ignore
+                    from docling.datamodel.base_models import InputFormat
+                    from docling.datamodel.pipeline_options import (
+                        PdfPipelineOptions,
+                        TesseractOcrOptions,
+                    )
+                    from docling.document_converter import DocumentConverter, PdfFormatOption  # type: ignore
 
-                    converter = DocumentConverter()
+                    pipeline_options = PdfPipelineOptions()
+                    pipeline_options.do_ocr = True
+                    pipeline_options.do_table_structure = True
+                    pipeline_options.table_structure_options.do_cell_matching = True
+
+                    ocr_options = TesseractOcrOptions(force_full_page_ocr=True)
+                    pipeline_options.ocr_options = ocr_options
+
+                    converter = DocumentConverter(
+                        format_options={
+                            InputFormat.PDF: PdfFormatOption(
+                                pipeline_options=pipeline_options,
+                            )
+                        }
+                    )
+
                     result = converter.convert(file_path)
                     content = result.document.export_to_markdown()
+                    print(content)
+                    # Logging extracted content
+                    # logger.info(f"[DOCLING CONTENT] Preview from {file_path.name}:\n{content[:500]}")
+
+                    if not content.strip():
+                        logger.error(f"[DOCLING] Extracted empty markdown from {file_path.name}")
+                    else:
+                        lines = content.strip().split("\n")
+                        non_empty_lines = [line for line in lines if line.strip()]
+                        logger.info(f"[DOCLING] Total non-empty lines extracted: {len(non_empty_lines)}")
+
                 else:
                     if not pm.is_installed("pypdf2"):  # type: ignore
                         pm.install("pypdf2")
@@ -532,7 +570,15 @@ async def pipeline_enqueue_file(rag: LightRAG, file_path: Path) -> bool:
                     pdf_file = BytesIO(file)
                     reader = PdfReader(pdf_file)
                     for page in reader.pages:
-                        content += page.extract_text() + "\n"
+                        text = page.extract_text()
+                        if text:
+                            content += text + "\n"
+
+                    logger.info(f"[PyPDF2 CONTENT] Preview from {file_path.name}:\n{content[:500]}")
+
+                # Final content fallback check
+                if not content.strip():
+                    logger.warning(f"[FINAL CHECK] No usable content extracted from {file_path.name}")
             case ".docx":
                 if global_args.document_loading_engine == "DOCLING":
                     if not pm.is_installed("docling"):  # type: ignore

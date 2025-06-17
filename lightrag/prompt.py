@@ -42,7 +42,7 @@ Format the content-level key words as ("content_keywords"{tuple_delimiter}<high_
 5. When finished, output {completion_delimiter}
 
 ######################
----Examples---
+---Examples (for guidance only)---
 ######################
 {examples}
 
@@ -248,7 +248,7 @@ Given the query and conversation history, list both high-level and low-level key
   - "low_level_keywords" for specific entities or details
 
 ######################
----Examples---
+---Examples (for guidance only)---
 ######################
 {examples}
 

@@ -72,6 +72,7 @@ def parse_args() -> argparse.Namespace:
         default=get_env_value("HOST", "0.0.0.0"),
         help="Server host (default: from env or 0.0.0.0)",
     )
+    
     parser.add_argument(
         "--port",
         type=int,
@@ -278,7 +279,7 @@ def parse_args() -> argparse.Namespace:
     args.temperature = get_env_value("TEMPERATURE", 0.5, float)
 
     # Select Document loading tool (DOCLING, DEFAULT)
-    args.document_loading_engine = get_env_value("DOCUMENT_LOADING_ENGINE", "DEFAULT")
+    args.document_loading_engine = get_env_value("DOCUMENT_LOADING_ENGINE", "DOCLING")
 
     # Add environment variables that were previously read directly
     args.cors_origins = get_env_value("CORS_ORIGINS", "*")
